@@ -14,7 +14,14 @@ async fn main() {
             "Executing pragmas leads to: \"{err}\". Have to use query. Am I holding it wrong?"
         );
     }
-    conn.query(PRAGMAS, ()).await.unwrap();
+    for line in PRAGMAS.to_string().split("\n") {
+        if !line.is_empty() {
+            let mut rows = conn.query(line, ()).await.unwrap();
+            while let Ok(Some(row)) = rows.next().await {
+                println!("Row: {row:?}");
+            }
+        }
+    }
     conn.execute_batch(CREATE_TABLE_QUERY).await.unwrap();
 
     let start = Instant::now();
