@@ -15,11 +15,10 @@ pub const CREATE_TABLE_QUERY: &str = r#"
     DROP TABLE IF EXISTS person;
     CREATE TABLE person (
       id         INTEGER PRIMARY KEY NOT NULL,
-      name       TEXT NOT NULL,
-      created    DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+      integer    INTEGER CHECK(integer < 42)
     );
 "#;
 
-pub const BENCHMARK_QUERY: &str = "INSERT INTO person (id, name) VALUES ($1, $2)";
+pub const INSERT_QUERY: &str = "INSERT INTO person (id, integer) VALUES ($1, $2)";
 
 pub const COUNT_QUERY: &str = "SELECT COUNT(*) FROM person";
