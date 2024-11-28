@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+members = [
+  "constants",
+  "libsql",
+  "rusqlite",
+  "rusqlite_mutex",
+  "tokio_rusqlite",
+]
+default-members = [
+  "libsql",
+  "rusqlite",
+  "rusqlite_mutex",
+  "tokio_rusqlite",
+]

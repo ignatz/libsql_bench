@@ -1,5 +1,8 @@
-pub const N: i64 = 1000;
-pub const TASKS: i64 = 16;
+pub const N: usize = 100000;
+
+pub fn num_tasks() -> usize {
+  std::thread::available_parallelism().unwrap().into()
+}
 
 pub const PRAGMAS: &str = r#"
     PRAGMA busy_timeout       = 10000;

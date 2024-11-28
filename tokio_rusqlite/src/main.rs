@@ -1,6 +1,4 @@
-mod constants;
-
-use crate::constants::*;
+use constants::*;
 use std::time::Instant;
 use tokio_rusqlite::Connection;
 
@@ -10,10 +8,21 @@ fn main() {
   let rt = tokio::runtime::Builder::new_multi_thread().build().unwrap();
 
   rt.block_on(async {
-    let fname = tmp_dir.path().join("libsql.sqlite");
+    let fname = tmp_dir.path().join("tokio_rusqlite.sqlite");
     println!("DB file: {fname:?}");
 
-    let conn = Connection::open(fname).await.unwrap();
+    let conn = Connection::open(fname.clone()).await.unwrap();
+
+    conn
+      .call(move |c| {
+        let version: String = c
+          .query_row("SELECT sqlite_version()", (), |row| row.get(0))
+          .unwrap();
+        println!("Sqlite v{version:?}");
+        Ok(())
+      })
+      .await
+      .unwrap();
 
     conn
       .call(|c| Ok(c.execute_batch(&format!("{PRAGMAS}\n{CREATE_TABLE_QUERY}"))?))
@@ -21,11 +30,12 @@ fn main() {
       .unwrap();
 
     let start = Instant::now();
-    let tasks: Vec<_> = (0..TASKS)
+    let tasks: Vec<_> = (0..num_tasks())
       .into_iter()
       .map(|task| {
         let conn = conn.clone();
-        tokio::spawn(async move {
+
+        rt.spawn(async move {
           for i in 0..N {
             let id = task * N + i;
             conn
@@ -36,7 +46,6 @@ fn main() {
               .await
               .unwrap();
           }
-          println!("finished {task}");
         })
       })
       .collect();
@@ -50,10 +59,12 @@ fn main() {
       .await
       .unwrap();
 
-    assert_eq!(count, TASKS * N);
+    assert_eq!(count, (num_tasks() * N) as i64);
     println!(
       "Inserted {count} rows in {elapsed:?}",
       elapsed = Instant::now() - start
     );
+
+    std::fs::remove_file(fname).unwrap();
   });
 }
