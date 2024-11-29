@@ -29,41 +29,82 @@ fn main() {
       .await
       .unwrap();
 
-    let start = Instant::now();
-    let tasks: Vec<_> = (0..num_tasks())
-      .into_iter()
-      .map(|task| {
-        let conn = conn.clone();
+    {
+      // Insertions
+      let start = Instant::now();
+      let tasks: Vec<_> = (0..num_tasks())
+        .into_iter()
+        .map(|task| {
+          let conn = conn.clone();
 
-        rt.spawn(async move {
-          for i in 0..N {
-            let id = task * N + i;
-            conn
-              .call(move |c| {
-                let mut stmt = c.prepare_cached(BENCHMARK_QUERY).unwrap();
-                Ok(stmt.execute((id, format!("{id}")))?)
-              })
-              .await
-              .unwrap();
-          }
+          rt.spawn(async move {
+            for i in 0..N {
+              let id = task * N + i;
+              conn
+                .call(move |c| {
+                  let mut stmt = c.prepare_cached(BENCHMARK_QUERY).unwrap();
+                  Ok(stmt.execute((id, format!("{id}")))?)
+                })
+                .await
+                .unwrap();
+            }
+          })
         })
-      })
-      .collect();
+        .collect();
 
-    for t in tasks {
-      t.await.unwrap();
+      for t in tasks {
+        t.await.unwrap();
+      }
+
+      println!(
+        "Inserted {count} rows in {elapsed:?}",
+        count = num_tasks() * N,
+        elapsed = Instant::now() - start,
+      );
     }
 
-    let count = conn
-      .call(|c| Ok(c.query_row(COUNT_QUERY, (), |row| row.get::<_, i64>(0))?))
+    let count: usize = conn
+      .call(|c| Ok(c.query_row(COUNT_QUERY, (), |row| row.get(0))?))
       .await
       .unwrap();
+    assert_eq!(count, num_tasks() * N);
 
-    assert_eq!(count, (num_tasks() * N) as i64);
-    println!(
-      "Inserted {count} rows in {elapsed:?}",
-      elapsed = Instant::now() - start
-    );
+    {
+      // Read
+      let start = Instant::now();
+      let tasks: Vec<_> = (0..num_tasks())
+        .into_iter()
+        .map(|task| {
+          let conn = conn.clone();
+
+          rt.spawn(async move {
+            for i in 0..N {
+              let id = task * N + i;
+              conn
+                .call(move |c| {
+                  let mut stmt = c
+                    .prepare_cached("SELECT * FROM person WHERE id = $1")
+                    .unwrap();
+                  let _ = stmt.query([id]).unwrap();
+                  Ok(())
+                })
+                .await
+                .unwrap();
+            }
+          })
+        })
+        .collect();
+
+      for t in tasks {
+        t.await.unwrap();
+      }
+
+      println!(
+        "Read {count} rows in {elapsed:?}",
+        count = num_tasks() * N,
+        elapsed = Instant::now() - start,
+      );
+    }
 
     std::fs::remove_file(fname).unwrap();
   });

@@ -2,7 +2,7 @@ use constants::*;
 use parking_lot::Mutex;
 use rusqlite::Connection;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 fn main() {
   let tmp_dir = tempfile::TempDir::new().unwrap();
@@ -13,6 +13,7 @@ fn main() {
   println!("rusqlite_mutex DB file: {fname:?}");
 
   let conn = Connection::open(fname.clone()).unwrap();
+  conn.busy_timeout(Duration::from_secs(10)).unwrap();
 
   let version: String = conn
     .query_row("SELECT sqlite_version()", (), |row| row.get(0))
@@ -25,41 +26,81 @@ fn main() {
 
   let c = Arc::new(Mutex::new(conn));
 
-  let start = Instant::now();
-  let tasks: Vec<_> = (0..num_tasks())
-    .into_iter()
-    .map(|task| {
-      let c = c.clone();
-      rt.spawn(async move {
-        for i in 0..N {
-          let id = task * N + i;
+  {
+    // Insert
+    let start = Instant::now();
+    let tasks: Vec<_> = (0..num_tasks())
+      .into_iter()
+      .map(|task| {
+        let c = c.clone();
+        rt.spawn(async move {
+          for i in 0..N {
+            let id = task * N + i;
 
-          {
-            let conn = c.lock();
-            let mut stmt = conn.prepare_cached(BENCHMARK_QUERY).unwrap();
-            stmt.execute((id, format!("{id}"))).unwrap();
+            {
+              let conn = c.lock();
+              let mut stmt = conn.prepare_cached(BENCHMARK_QUERY).unwrap();
+              stmt.execute((id, format!("{id}"))).unwrap();
+            }
           }
-        }
+        })
       })
-    })
-    .collect();
+      .collect();
 
-  rt.block_on(async {
-    for t in tasks {
-      t.await.unwrap();
-    }
-  });
+    rt.block_on(async {
+      for t in tasks {
+        t.await.unwrap();
+      }
+    });
 
-  let count = c
+    println!(
+      "Inserted {count} rows in {elapsed:?}",
+      count = num_tasks() * N,
+      elapsed = Instant::now() - start,
+    );
+  }
+
+  let count: usize = c
     .lock()
-    .query_row(COUNT_QUERY, (), |row| row.get::<_, i64>(0))
+    .query_row(COUNT_QUERY, (), |row| row.get(0))
     .unwrap();
+  assert_eq!(count, num_tasks() * N);
 
-  assert_eq!(count, (num_tasks() * N) as i64);
-  println!(
-    "Inserted {count} rows in {elapsed:?}",
-    elapsed = Instant::now() - start
-  );
+  {
+    // Read
+    let start = Instant::now();
+    let tasks: Vec<_> = (0..num_tasks())
+      .into_iter()
+      .map(|task| {
+        let c = c.clone();
+        rt.spawn(async move {
+          for i in 0..N {
+            let id = task * N + i;
+
+            {
+              let conn = c.lock();
+              let mut stmt = conn
+                .prepare_cached("SELECT * FROM person WHERE id = $1")
+                .unwrap();
+              let _ = stmt.query([id]).unwrap();
+            }
+          }
+        })
+      })
+      .collect();
+
+    rt.block_on(async {
+      for t in tasks {
+        t.await.unwrap();
+      }
+    });
+
+    println!(
+      "Read {count} rows in {elapsed:?}",
+      count = num_tasks() * N,
+      elapsed = Instant::now() - start,
+    );
+  }
 
   std::fs::remove_file(fname).unwrap();
 }
