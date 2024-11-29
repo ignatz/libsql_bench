@@ -9,6 +9,9 @@ rusqlite_mutex:
 libsql:
 	cargo run --release -p libsql_bench 
 
+libsql_rusqlite:
+	cargo run --release -p libsql_rusqlite_bench 
+
 tokio_rusqlite:
 	cargo run --release -p tokio_rusqlite_bench
 

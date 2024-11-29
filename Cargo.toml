@@ -3,12 +3,14 @@ resolver = "2"
 members = [
   "constants",
   "libsql",
+  "libsql_rusqlite",
   "rusqlite",
   "rusqlite_mutex",
   "tokio_rusqlite",
 ]
 default-members = [
   "libsql",
+  "libsql_rusqlite",
   "rusqlite",
   "rusqlite_mutex",
   "tokio_rusqlite",
