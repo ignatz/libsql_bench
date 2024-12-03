@@ -85,10 +85,11 @@ fn main() {
             for i in 0..N {
               let id = (task * N + i) as i64;
 
-              conn
+              let mut rows = conn
                 .query("SELECT * FROM person WHERE id = $1", [id])
                 .await
                 .unwrap();
+              rows.next().await.unwrap();
             }
           })
         })

@@ -82,7 +82,8 @@ fn main() {
               let mut stmt = conn
                 .prepare_cached("SELECT * FROM person WHERE id = $1")
                 .unwrap();
-              let _ = stmt.query([id]).unwrap();
+              let mut rows = stmt.query([id]).unwrap();
+              rows.next().unwrap();
             }
           }
         })

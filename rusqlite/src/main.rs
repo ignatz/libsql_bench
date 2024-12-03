@@ -5,8 +5,6 @@ use std::time::{Duration, Instant};
 fn main() {
   let tmp_dir = tempfile::TempDir::new().unwrap();
 
-  let rt = tokio::runtime::Builder::new_multi_thread().build().unwrap();
-
   let fname = tmp_dir.path().join("rusqlite.sqlite");
   println!("DB file: {fname:?}");
 
@@ -36,7 +34,7 @@ fn main() {
           }))
           .unwrap();
 
-        rt.spawn(async move {
+        std::thread::spawn(move || {
           for i in 0..N {
             let id = task * N + i;
 
@@ -49,11 +47,9 @@ fn main() {
       })
       .collect();
 
-    rt.block_on(async {
-      for t in tasks {
-        t.await.unwrap();
-      }
-    });
+    for t in tasks {
+      t.join().unwrap();
+    }
 
     println!(
       "Inserted {count} rows in {elapsed:?}",
@@ -73,24 +69,23 @@ fn main() {
       .map(|task| {
         let conn = Connection::open(fname.clone()).unwrap();
 
-        rt.spawn(async move {
+        std::thread::spawn(move || {
           for i in 0..N {
             let id = task * N + i;
 
             let mut stmt = conn
               .prepare_cached("SELECT * FROM person WHERE id = $1")
               .unwrap();
-            let _ = stmt.query([id]).unwrap();
+            let mut rows = stmt.query([id]).unwrap();
+            rows.next().unwrap();
           }
         })
       })
       .collect();
 
-    rt.block_on(async {
-      for t in tasks {
-        t.await.unwrap();
-      }
-    });
+    for t in tasks {
+      t.join().unwrap();
+    }
 
     println!(
       "Read {count} rows in {elapsed:?}",
