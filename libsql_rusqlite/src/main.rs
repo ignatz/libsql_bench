@@ -5,8 +5,6 @@ use std::time::{Duration, Instant};
 fn main() {
   let tmp_dir = tempfile::TempDir::new().unwrap();
 
-  let rt = tokio::runtime::Builder::new_multi_thread().build().unwrap();
-
   let fname = tmp_dir.path().join("rusqlite.sqlite");
   println!("DB file: {fname:?}");
 
