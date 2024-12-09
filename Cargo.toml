@@ -7,6 +7,7 @@ members = [
   "rusqlite",
   "rusqlite_mutex",
   "rusqlite_tl",
+  "rusqlite_tl2",
   "tokio_rusqlite",
 ]
 default-members = [
@@ -15,5 +16,6 @@ default-members = [
   "rusqlite",
   "rusqlite_mutex",
   "rusqlite_tl",
+  "rusqlite_tl2",
   "tokio_rusqlite",
 ]

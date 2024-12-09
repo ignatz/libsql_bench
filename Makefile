@@ -9,6 +9,9 @@ rusqlite_mutex:
 rusqlite_tl:
 	cargo run --release -p rusqlite_thread_local_bench
 
+rusqlite_tl2:
+	cargo run --release -p rusqlite_thread_local_bench2
+
 libsql:
 	cargo run --release -p libsql_bench 
 
@@ -18,4 +21,4 @@ libsql_rusqlite:
 tokio_rusqlite:
 	cargo run --release -p tokio_rusqlite_bench
 
-.PHONY: all rusqlite rusqlite_mutex rusqlite_tl libsql libsql_rusqlite tokio_rusqlite
+.PHONY: all rusqlite rusqlite_mutex rusqlite_tl rusqlite_tl2 libsql libsql_rusqlite tokio_rusqlite
