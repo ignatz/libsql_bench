@@ -2,13 +2,15 @@ use constants::*;
 use libsql::{Builder, Connection, Database};
 use std::time::Instant;
 
+const NAME: &str = "LIBSQL";
+
 fn main() {
   let tmp_dir = tempfile::TempDir::new().unwrap();
 
   let rt = tokio::runtime::Builder::new_multi_thread().build().unwrap();
 
   rt.block_on(async {
-    let fname = tmp_dir.path().join("libsql.sqlite");
+    let fname = tmp_dir.path().join(format!("{NAME}.sqlite"));
     println!("DB file: {fname:?}");
 
     let db: Database = Builder::new_local(fname.clone()).build().await.unwrap();
@@ -64,7 +66,7 @@ fn main() {
       }
 
       println!(
-        "Inserted {count} rows in {elapsed:?}",
+        "[{NAME}]\n\tInserted {count} rows in {elapsed:?}",
         count = num_tasks() * N,
         elapsed = Instant::now() - start,
       );
@@ -100,7 +102,7 @@ fn main() {
       }
 
       println!(
-        "Read {count} rows in {elapsed:?}",
+        "[{NAME}]\n\tRead {count} rows in {elapsed:?}",
         count = num_tasks() * N,
         elapsed = Instant::now() - start,
       );

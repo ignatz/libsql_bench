@@ -4,10 +4,12 @@ use rusqlite::Connection;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+const NAME: &str = "RUSQLITE_MUTEX";
+
 fn main() {
   let tmp_dir = tempfile::TempDir::new().unwrap();
 
-  let fname = tmp_dir.path().join("rusqlite_mutex.sqlite");
+  let fname = tmp_dir.path().join(format!("{NAME}.sqlite"));
   println!("rusqlite_mutex DB file: {fname:?}");
 
   let conn = Connection::open(fname.clone()).unwrap();
@@ -50,7 +52,7 @@ fn main() {
     }
 
     println!(
-      "Inserted {count} rows in {elapsed:?}",
+      "[{NAME}]\n\tInserted {count} rows in {elapsed:?}",
       count = num_tasks() * N,
       elapsed = Instant::now() - start,
     );
@@ -90,7 +92,7 @@ fn main() {
     }
 
     println!(
-      "Read {count} rows in {elapsed:?}",
+      "[{NAME}]\n\tRead {count} rows in {elapsed:?}",
       count = num_tasks() * N,
       elapsed = Instant::now() - start,
     );

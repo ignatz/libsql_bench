@@ -4,6 +4,8 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use thread_local::ThreadLocal;
 
+const NAME: &str = "RUSQLITE_TL2";
+
 struct State {
   factory: Box<dyn Fn() -> rusqlite::Connection + Send + Sync>,
   conn: ThreadLocal<rusqlite::Connection>,
@@ -44,7 +46,7 @@ fn new_conn(path: &std::path::PathBuf) -> rusqlite::Connection {
 fn main() {
   let tmp_dir = tempfile::TempDir::new().unwrap();
 
-  let fname = tmp_dir.path().join("rusqlite.sqlite");
+  let fname = tmp_dir.path().join(format!("{NAME}.sqlite"));
   println!("DB file: {fname:?}");
 
   let conn = Connection::open(fname.clone()).unwrap();
@@ -85,7 +87,7 @@ fn main() {
     }
 
     println!(
-      "Inserted {count} rows in {elapsed:?}",
+      "[{NAME}]\n\tInserted {count} rows in {elapsed:?}",
       count = num_tasks() * N,
       elapsed = Instant::now() - start,
     );
@@ -123,7 +125,7 @@ fn main() {
     }
 
     println!(
-      "Read {count} rows in {elapsed:?}",
+      "[{NAME}]\n\tRead {count} rows in {elapsed:?}",
       count = num_tasks() * N,
       elapsed = Instant::now() - start,
     );
