@@ -2,9 +2,21 @@ use constants::*;
 use parking_lot::Mutex;
 use rusqlite::Connection;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 const NAME: &str = "RUSQLITE_MUTEX";
+
+fn new_conn(path: &std::path::PathBuf) -> Connection {
+  let conn = Connection::open(path).unwrap();
+  conn.busy_timeout(constants::BUSY_TIMEOUT).unwrap();
+  conn
+    .busy_handler(Some(|_attempts| {
+      std::thread::sleep(constants::BUSY_SLEEP);
+      return true;
+    }))
+    .unwrap();
+  return conn;
+}
 
 fn main() {
   let tmp_dir = tempfile::TempDir::new().unwrap();
@@ -12,8 +24,7 @@ fn main() {
   let fname = tmp_dir.path().join(format!("{NAME}.sqlite"));
   println!("rusqlite_mutex DB file: {fname:?}");
 
-  let conn = Connection::open(fname.clone()).unwrap();
-  conn.busy_timeout(Duration::from_secs(10)).unwrap();
+  let conn = new_conn(&fname);
 
   let version: String = conn
     .query_row("SELECT sqlite_version()", (), |row| row.get(0))

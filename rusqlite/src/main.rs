@@ -1,8 +1,20 @@
 use constants::*;
 use rusqlite::Connection;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 const NAME: &str = "RUSQLITE";
+
+fn new_conn(path: &std::path::PathBuf) -> Connection {
+  let conn = Connection::open(path).unwrap();
+  conn.busy_timeout(constants::BUSY_TIMEOUT).unwrap();
+  conn
+    .busy_handler(Some(|_attempts| {
+      std::thread::sleep(constants::BUSY_SLEEP);
+      return true;
+    }))
+    .unwrap();
+  return conn;
+}
 
 fn main() {
   let tmp_dir = tempfile::TempDir::new().unwrap();
@@ -27,14 +39,7 @@ fn main() {
     let tasks: Vec<_> = (0..num_tasks())
       .into_iter()
       .map(|task| {
-        let conn = Connection::open(fname.clone()).unwrap();
-        conn.busy_timeout(Duration::from_secs(10)).unwrap();
-        conn
-          .busy_handler(Some(|_attempts| {
-            std::thread::sleep(Duration::from_millis(10));
-            return true;
-          }))
-          .unwrap();
+        let conn = new_conn(&fname);
 
         std::thread::spawn(move || {
           for i in 0..N {

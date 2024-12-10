@@ -1,7 +1,7 @@
 use constants::*;
 use rusqlite::Connection;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 const NAME: &str = "RUSQLITE_TL";
 
@@ -10,7 +10,7 @@ struct Test {
   #[cfg(debug_assertions)]
   conn: Arc<parking_lot::Mutex<rusqlite::Connection>>,
 
-  #[allow(unused)]
+  #[cfg(not(debug_assertions))]
   fun: Arc<dyn Fn() -> rusqlite::Connection + Send + Sync>,
 }
 
@@ -22,6 +22,7 @@ impl Test {
     return Self {
       #[cfg(debug_assertions)]
       conn: Arc::new(parking_lot::Mutex::new(f())),
+      #[cfg(not(debug_assertions))]
       fun: Arc::new(f),
     };
   }
@@ -78,12 +79,12 @@ impl Test {
   }
 }
 
-fn new_conn(path: &std::path::PathBuf) -> rusqlite::Connection {
+fn new_conn(path: &std::path::PathBuf) -> Connection {
   let conn = Connection::open(path).unwrap();
-  conn.busy_timeout(Duration::from_secs(10)).unwrap();
+  conn.busy_timeout(constants::BUSY_TIMEOUT).unwrap();
   conn
     .busy_handler(Some(|_attempts| {
-      std::thread::sleep(Duration::from_millis(10));
+      std::thread::sleep(constants::BUSY_SLEEP);
       return true;
     }))
     .unwrap();

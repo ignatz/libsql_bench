@@ -701,6 +701,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "rusqlite_thread_local_bench3"
+version = "0.1.0"
+dependencies = [
+ "constants",
+ "parking_lot",
+ "rusqlite",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "rustc-demangle"
 version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
