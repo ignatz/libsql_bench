@@ -13,13 +13,19 @@ thread_local! {
   static CELLS : Vec<OnceCell<RefCell<rusqlite::Connection>>> = std::iter::repeat_with(|| OnceCell::new()).take(MAX_ID).collect();
 }
 
-#[derive(Clone)]
-struct Test {
-  id: usize,
-  fun: Arc<dyn Fn() -> rusqlite::Connection + Send + Sync>,
+trait ConnTrait {
+  fn call<T, F>(&self, f: F) -> rusqlite::Result<T>
+  where
+    F: FnOnce(&mut rusqlite::Connection) -> rusqlite::Result<T>;
 }
 
-impl Test {
+struct ThreadLocalConn {
+  id: usize,
+  fun: Box<dyn Fn() -> rusqlite::Connection + Send + Sync>,
+}
+
+#[allow(unused)]
+impl ThreadLocalConn {
   pub fn new(f: impl Fn() -> rusqlite::Connection + Send + Sync + 'static) -> Self {
     let id = {
       let mut lock = ID.lock();
@@ -32,12 +38,14 @@ impl Test {
     }
     return Self {
       id,
-      fun: Arc::new(f),
+      fun: Box::new(f),
     };
   }
+}
 
+impl ConnTrait for ThreadLocalConn {
   #[inline]
-  fn _call<T, F>(&self, f: F) -> rusqlite::Result<T>
+  fn call<T, F>(&self, f: F) -> rusqlite::Result<T>
   where
     F: FnOnce(&mut rusqlite::Connection) -> rusqlite::Result<T>,
   {
@@ -47,26 +55,69 @@ impl Test {
       return f(conn);
     });
   }
+}
+
+#[allow(unused)]
+struct SharedConn {
+  conn: Mutex<rusqlite::Connection>,
+}
+
+impl SharedConn {
+  pub fn new(f: impl Fn() -> rusqlite::Connection + Send + Sync + 'static) -> Self {
+    return Self {
+      conn: Mutex::new(f()),
+    };
+  }
+}
+
+impl ConnTrait for SharedConn {
+  #[inline]
+  fn call<T, F>(&self, f: F) -> rusqlite::Result<T>
+  where
+    F: FnOnce(&mut rusqlite::Connection) -> rusqlite::Result<T>,
+  {
+    let mut lock = self.conn.lock();
+    return f(&mut *lock);
+  }
+}
+
+#[derive(Clone)]
+struct Conn {
+  #[cfg(not(debug_assertions))]
+  conn: Arc<ThreadLocalConn>,
+  #[cfg(debug_assertions)]
+  conn: Arc<SharedConn>,
+}
+
+impl Conn {
+  pub fn new(f: impl Fn() -> rusqlite::Connection + Send + Sync + 'static) -> Self {
+    return Conn {
+      #[cfg(not(debug_assertions))]
+      conn: Arc::new(ThreadLocalConn::new(f)),
+      #[cfg(debug_assertions)]
+      conn: Arc::new(SharedConn::new(f)),
+    };
+  }
 
   // NOTE: A `query` would require an owned Rows type to avoid holding a ref.
   #[inline]
-  pub fn query_row<T, P, F>(&self, sql: &str, params: P, f: F) -> rusqlite::Result<T>
+  fn query_row<T, P, F>(&self, sql: &str, params: P, f: F) -> rusqlite::Result<T>
   where
     P: rusqlite::Params,
     F: FnOnce(&rusqlite::Row<'_>) -> rusqlite::Result<T>,
   {
-    return self._call(move |conn| {
+    return self.conn.call(move |conn| {
       let mut stmt = conn.prepare_cached(sql)?;
       return stmt.query_row(params, f);
     });
   }
 
   #[inline]
-  pub fn execute<P>(&self, sql: &str, params: P) -> rusqlite::Result<usize>
+  fn execute<P>(&self, sql: &str, params: P) -> rusqlite::Result<usize>
   where
     P: rusqlite::Params,
   {
-    return self._call(move |conn| {
+    return self.conn.call(move |conn| {
       let mut stmt = conn.prepare_cached(sql)?;
       return stmt.execute(params);
     });
@@ -103,7 +154,7 @@ fn main() {
     .unwrap();
 
   let fname_clone = fname.clone();
-  let test = Test::new(move || new_conn(&fname_clone));
+  let test = Conn::new(move || new_conn(&fname_clone));
 
   {
     // Insert
