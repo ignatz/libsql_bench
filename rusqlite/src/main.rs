@@ -31,7 +31,7 @@ fn main() {
         conn.busy_timeout(Duration::from_secs(10)).unwrap();
         conn
           .busy_handler(Some(|_attempts| {
-            std::thread::sleep(Duration::from_millis(50));
+            std::thread::sleep(Duration::from_millis(10));
             return true;
           }))
           .unwrap();

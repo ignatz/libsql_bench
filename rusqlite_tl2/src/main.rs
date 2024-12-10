@@ -36,7 +36,7 @@ fn new_conn(path: &std::path::PathBuf) -> rusqlite::Connection {
   conn.busy_timeout(Duration::from_secs(10)).unwrap();
   conn
     .busy_handler(Some(|_attempts| {
-      std::thread::sleep(Duration::from_millis(50));
+      std::thread::sleep(Duration::from_millis(10));
       return true;
     }))
     .unwrap();
@@ -60,16 +60,18 @@ fn main() {
     .execute_batch(&format!("{PRAGMAS}\n{CREATE_TABLE_QUERY}"))
     .unwrap();
 
+  let fname_clone = fname.clone();
+  let test = Test::new(move || new_conn(&fname_clone));
+
   {
     // Insert
     let start = Instant::now();
     let tasks: Vec<_> = (0..num_tasks())
       .into_iter()
       .map(|task| {
-        let fname = fname.clone();
+        let test = test.clone();
 
         std::thread::spawn(move || {
-          let test = Test::new(move || new_conn(&fname));
           for i in 0..N {
             let id = task * N + i;
 
@@ -102,10 +104,9 @@ fn main() {
     let tasks: Vec<_> = (0..num_tasks())
       .into_iter()
       .map(|task| {
-        let fname = fname.clone();
+        let test = test.clone();
 
         std::thread::spawn(move || {
-          let test = Test::new(move || new_conn(&fname));
           for i in 0..N {
             let id = task * N + i;
 
