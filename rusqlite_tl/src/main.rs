@@ -7,21 +7,22 @@ const NAME: &str = "RUSQLITE_TL";
 
 #[derive(Clone)]
 struct Test {
-  fun: Arc<dyn Fn() -> rusqlite::Connection + Send + Sync>,
-
   #[cfg(debug_assertions)]
-  conn: std::sync::OnceLock<Arc<parking_lot::Mutex<rusqlite::Connection>>>,
+  conn: Arc<parking_lot::Mutex<rusqlite::Connection>>,
+
+  #[allow(unused)]
+  fun: Arc<dyn Fn() -> rusqlite::Connection + Send + Sync>,
 }
 
 /// NOTE: This API allows to switch between different execution modes, e.g. multi-conn in release
 /// and shared conn for in-memory dbs in tests.
 /// NOTE: We could even try to work with RwLock + stmt.readonly().
 impl Test {
-  pub fn new(f: Arc<dyn Fn() -> rusqlite::Connection + Send + Sync>) -> Self {
+  pub fn new(f: impl Fn() -> rusqlite::Connection + Send + Sync + 'static) -> Self {
     return Self {
-      fun: f,
       #[cfg(debug_assertions)]
-      conn: std::sync::OnceLock::new(),
+      conn: Arc::new(parking_lot::Mutex::new(f())),
+      fun: Arc::new(f),
     };
   }
 
@@ -49,10 +50,7 @@ impl Test {
   where
     F: FnOnce(&mut rusqlite::Connection) -> rusqlite::Result<T>,
   {
-    let conn = self
-      .conn
-      .get_or_init(|| Arc::new(parking_lot::Mutex::new((self.fun)())));
-    return f(&mut conn.lock());
+    return f(&mut self.conn.lock());
   }
 
   // NOTE: A `query` would require an owned Rows type to avoid holding a ref.
@@ -109,16 +107,18 @@ fn main() {
     .execute_batch(&format!("{PRAGMAS}\n{CREATE_TABLE_QUERY}"))
     .unwrap();
 
+  let fname_clone = fname.clone();
+  let test = Test::new(move || new_conn(&fname_clone));
+
   {
     // Insert
     let start = Instant::now();
     let tasks: Vec<_> = (0..num_tasks())
       .into_iter()
       .map(|task| {
-        let fname = fname.clone();
+        let test = test.clone();
 
         std::thread::spawn(move || {
-          let test = Test::new(Arc::new(move || new_conn(&fname)));
           for i in 0..N {
             let id = task * N + i;
 
@@ -150,10 +150,9 @@ fn main() {
     let tasks: Vec<_> = (0..num_tasks())
       .into_iter()
       .map(|task| {
-        let fname = fname.clone();
+        let test = test.clone();
 
         std::thread::spawn(move || {
-          let test = Test::new(Arc::new(move || new_conn(&fname)));
           for i in 0..N {
             let id = task * N + i;
 
