@@ -7,4 +7,4 @@ edition = "2021"
 constants = { path = "../constants" }
 tempfile = "3.14.0"
 tokio = {version  = "^1.38.0", features=["macros", "rt-multi-thread"] }
-tokio-rusqlite = "0.6.0"
+tokio-rusqlite = { path = "../vendor/tokio-rusqlite/" }

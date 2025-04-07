@@ -1,4 +1,4 @@
-all: rusqlite rusqlite_mutex rusqlite_tl rusqlite_tl2 rusqlite_tl3 libsql libsql_rusqlite tokio_rusqlite
+all: rusqlite rusqlite_mutex rusqlite_tl rusqlite_tl2 rusqlite_tl3 libsql libsql_rusqlite r2d2 tokio_rusqlite
 
 rusqlite:
 	cargo run --release -p rusqlite_bench 2> /dev/null
@@ -21,7 +21,10 @@ libsql:
 libsql_rusqlite:
 	cargo run --release -p libsql_rusqlite_bench 2> /dev/null
 
+r2d2:
+	cargo run --release -p r2d2_bench 2> /dev/null
+
 tokio_rusqlite:
 	cargo run --release -p tokio_rusqlite_bench 2> /dev/null
 
-.PHONY: all rusqlite rusqlite_mutex rusqlite_tl rusqlite_tl2 rusqlite_tl3 libsql libsql_rusqlite tokio_rusqlite
+.PHONY: all rusqlite rusqlite_mutex rusqlite_tl rusqlite_tl2 rusqlite_tl3 libsql libsql_rusqlite tokio_rusqlite r2d2

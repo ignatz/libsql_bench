@@ -1,11 +1,12 @@
 [package]
-name = "rusqlite_thread_local_bench3"
+name = "r2d2_bench"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 constants = { path = "../constants" }
-parking_lot = "0.12.3"
+r2d2 = "0.8.10"
+r2d2_sqlite = "0.27.0"
 rusqlite = "0.34.0"
 tempfile = "3.14.0"
 tokio = {version  = "^1.38.0", features=["macros", "rt-multi-thread"] }

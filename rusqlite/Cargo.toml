@@ -5,6 +5,6 @@ edition = "2021"
 
 [dependencies]
 constants = { path = "../constants" }
-rusqlite = "0.32.1"
+rusqlite = "0.34.0"
 tempfile = "3.14.0"
 tokio = {version  = "^1.38.0", features=["macros", "rt-multi-thread"] }
