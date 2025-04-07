@@ -14,8 +14,9 @@ fn main() {
     let fname = tmp_dir.path().join(format!("{NAME}.sqlite"));
     println!("DB file: {fname:?}");
 
-    let c = rusqlite::Connection::open(fname.clone()).unwrap();
-    let conn = Connection::from_conn(c).unwrap();
+    let conn = Connection::new(|| {
+    return rusqlite::Connection::open(fname.clone()).unwrap();
+    }).unwrap();
 
     conn
       .call(move |c| {

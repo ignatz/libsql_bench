@@ -56,6 +56,16 @@ impl Connection {
     return Ok(Self { sender });
   }
 
+  pub fn new(c: impl Fn () -> rusqlite::Connection) -> Result<Self> {
+    let (sender, receiver) = crossbeam_channel::unbounded::<Message>();
+    for _i in 0..4 {
+      let conn = c();
+      let receiver = receiver.clone();
+      std::thread::spawn(move || event_loop(conn, receiver));
+    }
+    return Ok(Self { sender });
+  }
+
   /// Open a new connection to an in-memory SQLite database.
   ///
   /// # Failure
