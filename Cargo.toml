@@ -11,7 +11,9 @@ members = [
   "rusqlite_tl2",
   "rusqlite_tl3",
   "tokio_rusqlite",
+  "trailbase_sqlite",
   "vendor/tokio-rusqlite",
+  "vendor/trailbase-sqlite",
 ]
 default-members = [
   "libsql",
@@ -22,5 +24,6 @@ default-members = [
   "rusqlite_tl",
   "rusqlite_tl2",
   "rusqlite_tl3",
+  "trailbase_sqlite",
   "tokio_rusqlite",
 ]

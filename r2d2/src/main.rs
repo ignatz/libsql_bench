@@ -21,12 +21,15 @@ fn main() {
   let conn = new_conn(&fname);
 
   let version: String = conn
-    .get().unwrap()
+    .get()
+    .unwrap()
     .query_row("SELECT sqlite_version()", (), |row| row.get(0))
     .unwrap();
   println!("Sqlite v{version:?}");
 
-  conn.get().unwrap()
+  conn
+    .get()
+    .unwrap()
     .execute_batch(&format!("{PRAGMAS}\n{CREATE_TABLE_QUERY}"))
     .unwrap();
 
@@ -63,7 +66,11 @@ fn main() {
     );
   }
 
-  let count: usize = conn.get().unwrap().query_row(COUNT_QUERY, (), |row| row.get(0)).unwrap();
+  let count: usize = conn
+    .get()
+    .unwrap()
+    .query_row(COUNT_QUERY, (), |row| row.get(0))
+    .unwrap();
   assert_eq!(count, num_tasks() * N);
 
   {
@@ -79,8 +86,8 @@ fn main() {
             let id = task * N + i;
 
             let c = conn.get().unwrap();
-            let mut stmt = 
-              c.prepare_cached("SELECT * FROM person WHERE id = $1")
+            let mut stmt = c
+              .prepare_cached("SELECT * FROM person WHERE id = $1")
               .unwrap();
             let mut rows = stmt.query([id]).unwrap();
             rows.next().unwrap();

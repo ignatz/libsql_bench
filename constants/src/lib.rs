@@ -9,19 +9,6 @@ pub fn num_tasks() -> usize {
   std::thread::available_parallelism().unwrap().into()
 }
 
-// DO NOT DEPEND ON RUSQLITE TO AVOID LINKING BOTH: RUSQLITE & LIBSQL.
-// pub fn new_conn(path: &std::path::PathBuf) -> rusqlite::Connection {
-//   let conn = rusqlite::Connection::open(path).unwrap();
-//   conn.busy_timeout(BUSY_TIMEOUT).unwrap();
-//   conn
-//     .busy_handler(Some(|_attempts| {
-//       std::thread::sleep(BUSY_SLEEP);
-//       return true;
-//     }))
-//     .unwrap();
-//   return conn;
-// }
-
 pub const PRAGMAS: &str = r#"
     PRAGMA busy_timeout       = 10000;
     PRAGMA journal_mode       = WAL;
@@ -44,3 +31,13 @@ pub const CREATE_TABLE_QUERY: &str = r#"
 pub const BENCHMARK_QUERY: &str = "INSERT INTO person (id, name) VALUES ($1, $2)";
 
 pub const COUNT_QUERY: &str = "SELECT COUNT(*) FROM person";
+
+pub trait SyncConnection {
+  fn run_query(&self, sql: &str);
+}
+
+impl SyncConnection for rusqlite::Connection {
+  fn run_query(&self, sql: &str) {
+    let mut stmt = self.prepare_cached(sql).unwrap();
+  }
+}
